@@ -9,7 +9,9 @@ server.listen()
 players = []
 for i in range(2):
     conn, addr = server.accept()
-    players.append((conn, conn.makefile("r")))
+    players.append(
+        (conn, conn.makefile("r", encoding="utf-8"))
+    )  # 받는 글자를 UTF-8로 읽어 한글이 와도 깨지거나 죽지 않게 한다
 
 players[0][0].sendall(b"START|WHITE\n")
 players[1][0].sendall(b"START|BLACK\n")
