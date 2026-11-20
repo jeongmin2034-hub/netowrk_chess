@@ -13,12 +13,19 @@ for i in range(2):
         (conn, conn.makefile("r", encoding="utf-8"))
     )  # 받는 글자를 UTF-8로 읽어 한글이 와도 깨지거나 죽지 않게 한다
 
-players[0][0].sendall(b"START|WHITE\n")
-players[1][0].sendall(b"START|BLACK\n")
-
 board = (
     chess.Board()
 )  # 체스판을 처음 배치 상태로 만든다. 규칙 판정은 모두 이 객체가 한다
+
+players[0][0].sendall(b"START|WHITE\n")
+players[1][0].sendall(b"START|BLACK\n")
+
+first = (
+    "BOARD|-|" + board.fen() + "\n"
+).encode()  # 시작 보드 메시지. 둔 수가 없으므로 수 자리에 "-"를 넣는다
+for conn, f in players:  # 두 플레이어 모두에게
+    conn.sendall(first)  # 시작 보드를 보낸다
+
 turn = 0
 
 while True:
@@ -48,10 +55,11 @@ while True:
         conn.sendall(b"ERROR|ILLEGAL\n")  # 규칙에 어긋난 수라고 알려준다
         continue  # 차례를 바꾸지 않고 같은 사람의 다음 입력을 기다린다
     board.push(move)  # 합법적인 수이므로 서버의 체스판에 반영한다
-    conn.sendall(b"OK\n")  # 수를 둔 사람에게 성공했다고 알려준다
-    other.sendall(
-        ("MOVE|" + parts[1] + "\n").encode()
-    )  # 받은 줄 대신, 검사를 통과한 수를 다시 조립해서 상대에게 전달한다
+    msg = (
+        "BOARD|" + parts[1] + "|" + board.fen() + "\n"
+    ).encode()  # "BOARD|수|FEN" 메시지를 만든다. 4단계의 OK와 MOVE를 이것 하나로 대체한다
+    conn.sendall(msg)  # 수를 둔 사람에게 보낸다. 이 메시지가 곧 성공 응답이다
+    other.sendall(msg)  # 상대에게도 똑같은 메시지를 보낸다
     turn = 1 - turn
 
 for conn, f in players:
